@@ -1,12 +1,18 @@
 import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
-import { resetRouter } from '@/router'
+import { resetRouter,anyRoutes,asyncRoutes,constantRoutes } from '@/router'
+import router from '@/router'
 
 const getDefaultState = () => {
   return {
     token: getToken(),
     name: '',
-    avatar: ''
+    avatar: '',
+    routes:[],
+    roles:[],
+    buttons:[],
+    resultAsyncRoutes:[],
+    resultRoutes:[],
   }
 }
 
@@ -24,14 +30,41 @@ const mutations = {
   },
   SET_AVATAR: (state, avatar) => {
     state.avatar = avatar
+  },
+  SET_RESULTASYNCROUTES:(state,asyncRoutes)=>{
+    state.resultAsyncRoutes = asyncRoutes
+    state.resultRoutes = constantRoutes.concat(state.resultAsyncRoutes,anyRoutes)
+    router.addRoutes(state.resultRoutes)
   }
+}
+
+const compare = (asyncRoutes,routes)=>{
+    return asyncRoutes.filter(item=>{
+      if (routes.indexOf(item.name)!=-1) {
+        if (item.children&&item.children.length) {
+          item.children = compare(item.children,routes)
+        }
+          return true
+      }
+    })
 }
 
 const actions = {
   // user login
-  login({ commit }, userInfo) {
+  async login({ commit }, userInfo) {
     const { username, password } = userInfo
-    return new Promise((resolve, reject) => {
+    const result = await login({ username: username.trim(), password: password })
+    // console.log(result);
+    if (result.code === 20000) {
+      // vuex 存储token
+      commit('SET_TOKEN', result.data.token)
+      // 本地存储token
+      setToken(result.data.token)
+      return 'ok'
+    } else {
+      return Promise.reject(new Error('faile'))
+    }
+    /* return new Promise((resolve, reject) => {
       login({ username: username.trim(), password: password }).then(response => {
         const { data } = response
         commit('SET_TOKEN', data.token)
@@ -40,7 +73,7 @@ const actions = {
       }).catch(error => {
         reject(error)
       })
-    })
+    }) */
   },
 
   // get user info
@@ -53,10 +86,11 @@ const actions = {
           return reject('Verification failed, please Login again.')
         }
 
-        const { name, avatar } = data
+        const { name, avatar,routes } = data
 
         commit('SET_NAME', name)
         commit('SET_AVATAR', avatar)
+        commit('SET_RESULTASYNCROUTES',compare(asyncRoutes,data.routes))
         resolve(data)
       }).catch(error => {
         reject(error)

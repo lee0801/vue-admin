@@ -27,7 +27,8 @@ module.exports = {
   publicPath: '/',
   outputDir: 'dist',
   assetsDir: 'static',
-  lintOnSave: process.env.NODE_ENV === 'development',
+  // lintOnSave: process.env.NODE_ENV === 'development',
+  lintOnSave:false,
   productionSourceMap: false,
   devServer: {
     port: port,
@@ -36,7 +37,19 @@ module.exports = {
       warnings: false,
       errors: true
     },
-    before: require('./mock/mock-server.js')
+    // before: require('./mock/mock-server.js'),
+    after: require('./mock/mock-server.js'),
+    // 配置代理跨域
+    proxy: {
+      '/dev-api/admin/acl': {
+        target: 'http://39.98.123.211:8170',
+        pathRewrite: { '^/dev-api': '' }
+      },
+      '/dev-api/admin/product': {
+        target: 'http://39.98.123.211:8510',
+        pathRewrite: { '^/dev-api': '' }
+      }
+    }
   },
   configureWebpack: {
     // provide the app's title in webpack's name field, so that
